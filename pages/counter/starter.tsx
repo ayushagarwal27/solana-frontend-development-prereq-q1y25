@@ -13,6 +13,8 @@ const Starter = () => {
   const [counterKey, setCounterKey] = useState("");
   const [count, setCount] = useState(0);
   const [txSig, setTxSig] = useState("");
+  const [counterValue, setCounterValue] = useState(0);
+  const [counterClosed, setCounterClosed] = useState(false);
 
   const { connection } = useConnection();
   const { publicKey, wallet } = useWallet();
@@ -99,6 +101,89 @@ const Starter = () => {
     }
   };
 
+  const handleDecrementCounter = async () => {
+    if (!connection || !publicKey) {
+      toast.error("Please connect your wallet.");
+      return;
+    }
+
+    const transaction = await getPreparedTransaction();
+    const instruction = await counterProgram.methods
+      .decrement()
+      .accounts({
+        counter: new PublicKey(counterKey),
+      })
+      .instruction();
+    transaction.add(instruction);
+
+    try {
+      const signature = await provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
+      setTxSig(signature);
+    } catch (error) {
+      console.log(error);
+      toast.error("Transaction failed!");
+    }
+  };
+
+  const handleSetCounter = async () => {
+    if (!connection || !publicKey) {
+      toast.error("Please connect your wallet.");
+      return;
+    }
+
+    const transaction = await getPreparedTransaction();
+    const instruction = await counterProgram.methods
+      .set(counterValue)
+      .accounts({
+        counter: new PublicKey(counterKey),
+      })
+      .instruction();
+    transaction.add(instruction);
+
+    try {
+      const signature = await provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
+      setTxSig(signature);
+    } catch (error) {
+      console.log(error);
+      toast.error("Transaction failed!");
+    }
+  };
+
+  const handleCloseCounter = async () => {
+    if (!connection || !publicKey) {
+      toast.error("Please connect your wallet.");
+      return;
+    }
+
+    const transaction = await getPreparedTransaction();
+    const instruction = await counterProgram.methods
+      .close()
+      .accounts({
+        counter: new PublicKey(counterKey),
+      })
+      .instruction();
+    transaction.add(instruction);
+
+    try {
+      const signature = await provider.sendAndConfirm(transaction, [], {
+        skipPreflight: true,
+      });
+      setTxSig(signature);
+      const checkIsClosed = await counterProgram.account.counter.fetchNullable(
+        new PublicKey(counterKey)
+      );
+
+      setCounterClosed(checkIsClosed === null);
+    } catch (error) {
+      console.log(error);
+      toast.error("Transaction failed!");
+    }
+  };
+
   useEffect(() => {
     const getInfo = async () => {
       if (connection && publicKey && counterKey) {
@@ -124,6 +209,10 @@ const Starter = () => {
       title: "Latest Transaction Signature...",
       dependency: txSig,
       href: `https://explorer.solana.com/tx/${txSig}?cluster=devnet`,
+    },
+    {
+      title: "Counter closed...",
+      dependency: counterClosed ? "True" : "False",
     },
   ];
 
@@ -157,12 +246,56 @@ const Starter = () => {
                 e.preventDefault();
                 handleIncrementCounter();
               }}
-              disabled={!publicKey || !counterKey}
+              disabled={!publicKey || !counterKey || counterClosed}
               className={`disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#fa6ece] bg-[#fa6ece] 
                 rounded-lg w-auto py-1 font-semibold transition-all duration-200 hover:bg-transparent 
                 border-2 border-transparent hover:border-[#fa6ece]`}
             >
               Increment Counter
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                handleDecrementCounter();
+              }}
+              disabled={!publicKey || !counterKey || counterClosed}
+              className={`disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#fa6ece] bg-[#fa6ece] 
+                rounded-lg w-auto py-1 font-semibold transition-all duration-200 hover:bg-transparent 
+                border-2 border-transparent hover:border-[#fa6ece]`}
+            >
+              Decrement Counter
+            </button>
+            <input
+              id="account"
+              type="number"
+              value={counterValue}
+              placeholder="Counter Value"
+              className="text-[#9e80ff] py-1 w-full bg-transparent outline-none resize-none border-2 border-transparent border-b-white"
+              onChange={(event) => setCounterValue(Number(event.target.value))}
+            />
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                handleSetCounter();
+              }}
+              disabled={!publicKey || !counterKey || counterClosed}
+              className={`disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#fa6ece] bg-[#fa6ece] 
+                rounded-lg w-auto py-1 font-semibold transition-all duration-200 hover:bg-transparent 
+                border-2 border-transparent hover:border-[#fa6ece]`}
+            >
+              Set Counter
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                handleCloseCounter();
+              }}
+              disabled={!publicKey || !counterKey || counterClosed}
+              className={`disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#fa6ece] bg-[#fa6ece] 
+                rounded-lg w-auto py-1 font-semibold transition-all duration-200 hover:bg-transparent 
+                border-2 border-transparent hover:border-[#fa6ece]`}
+            >
+              Close Counter
             </button>
           </div>
           <div className="text-sm font-semibold mt-8 bg-[#222524] border-2 border-gray-500 rounded-lg p-2">
